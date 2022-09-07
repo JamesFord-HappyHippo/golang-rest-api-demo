@@ -12,8 +12,8 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const PostgresConn = "host=localhost port=5432 user=postgres password=mysecretpassword dbname=postgres sslmode=disable"
-const MySQLConn = "root:my-secret-pw@tcp(localhost:3306)/db"
+//const PostgresConn = "host=localhost port=5432 user=postgres password=mysecretpassword dbname=postgres sslmode=disable"
+const MySQLConn = "admin:44_FUNtime@tcp(happy1.cwkfm0ctmqb3.us-east-2.rds.amazonaws.com:3306)/Happy1"
 
 func TestConnectToDB(t *testing.T) {
 
@@ -34,14 +34,14 @@ func TestConnectToDB(t *testing.T) {
 	dbConn.Close()
 
 	// negative case for mysql DB conn
-	dbConn, err = connectToDB("mysql", "unknown:unknown@tcp(localhost:3306)/db", logger)
+	dbConn, err = connectToDB("mysql", "admin:44_FUNtime@tcp(happy1.cwkfm0ctmqb3.us-east-2.rds.amazonaws.com:3306)/Happy1", logger)
 	if err == nil || dbConn.Ping() == nil {
 		t.Errorf("DB Connection established for wrong user name / password")
 		dbConn.Close()
 	}
 
 	// negative case for mysql DB conn
-	dbConn, err = connectToDB("mysql", "myuser:mypass@tcp(localhost:1234)/db", logger)
+	dbConn, err = connectToDB("mysql", "admin:44_FUNtime@tcp(happy1.cwkfm0ctmqb3.us-east-2.rds.amazonaws.com:3306)/Happy1", logger)
 	if err == nil || dbConn.Ping() == nil {
 		t.Errorf("DB Connection established for db host/port")
 	}
@@ -100,34 +100,50 @@ func initTestModule(db, connectionString string) (app *App) {
 func TestHomepage(t *testing.T) {
 
 	const homepageResponse = `
-- POST /article
+- POST /company
   - Add new article to DB
   - payload :
     {
-        Title     (string)
-        desc      (string)
-        content   (string)
+		Client_ID 	(string)
+		Company_ID 	(string)
+		Company_Name (string)
+		ASIC 		(string)
+		Flight_Risk_Status (string)
+		Recruit_Status (string)
+		Total_Flight_Risk (string)
+		Total_Backfill   (string)
+		Create_Date (string)
+		Last_Update   (string)
+		Data_As_Of_Date  (string)
     }
 
-- PUT /article/{id}
+- PUT /company/{id}
   - Update an existing article DB
   - query param : id (article id from GET API)
   - payload :
     {
-        Title     (string)
-        desc      (string)
-        content   (string)
+		Client_ID 	(string)
+		Company_ID 	(string)
+		Company_Name (string)
+		ASIC 		(string)
+		Flight_Risk_Status (string)
+		Recruit_Status (string)
+		Total_Flight_Risk (string)
+		Total_Backfill   (string)
+		Create_Date (string)
+		Last_Update   (string)
+		Data_As_Of_Date  (string)
     }
 
-- DELETE /article/{id}
+- DELETE /company/{id}
   - Deletes an entry from DB
   - query param : id (article id from GET API)
 
-- GET /article/{id}
+- GET /company/{id}
   - Retrieves article data from DB for a given ID
   - query param : id (article id from GET API) 
 
-- GET /articles
+- GET /company
   - retrives all articles from DB
   - query params : id (last ID from previous GET call for pagination), limit (max entry per page)
   - response : list of articles
@@ -167,13 +183,13 @@ func TestHomepage(t *testing.T) {
 	}
 }
 
-func TestCreateNewArticle(t *testing.T) {
+func TestCreateNewCompany(t *testing.T) {
 
 	for _, dbType := range []string{"mysql", "postgres"} {
 
 		var (
 			connectionString string
-			responseArticle  Article
+			responseArticle  company
 		)
 
 		if dbType == "mysql" {
@@ -189,20 +205,28 @@ func TestCreateNewArticle(t *testing.T) {
 		)
 
 		// prepare article data
-		article := Article{
-			Title:   "TestArticle",
-			Desc:    "TestDesc",
-			Content: "TestContent",
+		company := Company{
+			Client_ID 	"2399029309299"
+			Company_ID 	"21271d86-baf1-40c3-b803-77b526f8e4c5"
+			Company_Name "TEST_GO"
+			ASIC 		"1234"
+			Flight_Risk_Status "Test"
+			Recruit_Status "Test"
+			Total_Flight_Risk "1234"
+			Total_Backfill   "12345"
+			Create_Date "2021-02-25"
+			Last_Update   "2021-02-25"
+			Data_As_Of_Date  "2021-02-25"
 		}
 
 		// convert the article data as json
-		payload, err := json.Marshal(article)
+		payload, err := json.Marshal(company)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// creating new request to homepage
-		req, err := http.NewRequest("POST", "/article", bytes.NewBuffer(payload))
+		req, err := http.NewRequest("POST", "/company", bytes.NewBuffer(payload))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -229,9 +253,9 @@ func TestCreateNewArticle(t *testing.T) {
 		json.NewDecoder(rr.Body).Decode(&responseArticle)
 
 		// Check the response string matches expected response
-		if responseArticle.Id != 0 && responseArticle.Title != article.Title {
+		if responseCompany.Id != 0 && responseCompany.Company_Name != company.Company_Name {
 			t.Errorf("handler returned unexpected body: got %+v want %+v",
-				responseArticle, article)
+				responseCompany, company)
 		}
 	}
 }
@@ -242,7 +266,7 @@ func TestReturnAllArticles(t *testing.T) {
 
 		var (
 			connectionString string
-			responseArticle  Article
+			responseCompany  company
 		)
 
 		if dbType == "mysql" {
@@ -258,10 +282,18 @@ func TestReturnAllArticles(t *testing.T) {
 		)
 
 		// prepare article data
-		article := Article{
-			Title:   "TestArticle",
-			Desc:    "TestDesc",
-			Content: "TestContent",
+		company := Company{
+			Client_ID 	"2399029309299"
+			Company_ID 	"21271d86-baf1-40c3-b803-77b526f8e4c5"
+			Company_Name "TEST_GO"
+			ASIC 		"1234"
+			Flight_Risk_Status "Test"
+			Recruit_Status "Test"
+			Total_Flight_Risk "1234"
+			Total_Backfill   "12345"
+			Create_Date "2021-02-25"
+			Last_Update   "2021-02-25"
+			Data_As_Of_Date  "2021-02-25"
 		}
 
 		// convert the article data as json
@@ -271,7 +303,7 @@ func TestReturnAllArticles(t *testing.T) {
 		}
 
 		// creating new request to homepage
-		req, err := http.NewRequest("GET", "/articles", bytes.NewBuffer(payload))
+		req, err := http.NewRequest("GET", "/company", bytes.NewBuffer(payload))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -283,7 +315,7 @@ func TestReturnAllArticles(t *testing.T) {
 
 		// new recorder for capturing response from request
 		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(app.createNewArticle)
+		handler := http.HandlerFunc(app.createNewCompany)
 
 		// serve http call on request
 		handler.ServeHTTP(rr, req)
@@ -295,12 +327,12 @@ func TestReturnAllArticles(t *testing.T) {
 		}
 
 		// decode the response body to a new article struct
-		json.NewDecoder(rr.Body).Decode(&responseArticle)
+		json.NewDecoder(rr.Body).Decode(&responseCompany)
 
 		// Check the response string matches expected response
-		if responseArticle.Id != 0 && responseArticle.Title != article.Title {
+		if responseCompany.Id != 0 && responseCompany.Company_Name != company.Company_Name {
 			t.Errorf("handler returned unexpected body: got %+v want %+v",
-				responseArticle, article)
+				responseCompany, company)
 		}
 	}
 }

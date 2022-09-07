@@ -2,14 +2,13 @@
 REST API DEMO
 
 Methods :
-createNewArticle, returnAllArticles, returnSingleArticle, updateArticle, homepage, deleteArticle, handleRequests, connectToDB, main
+createNewCompany, returnAllCompany, returnSingleCompany, updateCompany, homepage, deleteCompany, handleRequests, connectToDB, main
 */
 package main
 
 import (
 	"database/sql"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -30,41 +29,50 @@ type (
 		logger   *log.Logger
 	}
 
-	// Article contains the data to be details for data to be stored into DB
-	Article struct {
-		Id      int    `json:"id"`
-		Title   string `json:"Title"`
-		Desc    string `json:"desc"`
-		Content string `json:"content"`
+	// Company contains the data to be details for data to be stored into DB
+	// prepare Company data
+
+	Company struct {
+		Client_ID          int    `json:"Client_ID"`
+		Company_ID         int    `json:"Company_ID"`
+		Company_Name       string `json:"Company_Name"`
+		ASIC               string `json:"ASIC"`
+		Flight_Risk_Status string `json:"Flight_Risk_Status"`
+		Recruit_Status     string `json:"Recruit_Status"`
+		Total_Flight_Risk  string `json:"Total_Flight_Risk"`
+		Total_Backfill     string `json:"Total_Backfill"`
+		Create_Date        string `json:"Create_Date"`
+		Last_Update        string `json:"Last_Update"`
+		Data_As_Of_Date    string `json:"Data_As_Of_Date"`
 	}
 )
 
-//	POST /createNewArticle
-//	payload : Article struct
+//	POST /createNewCompany
+//	payload : Company struct
 //
-// creates new article entry to DB
-func (app *App) createNewArticle(w http.ResponseWriter, r *http.Request) {
+// creates new Company entry to DB
+func (app *App) createNewCompany(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		query   string
-		article Article
+		Company Company
 	)
 
-	app.logger.Println("Endpoint hit : createNewArticle")
+	app.logger.Println("Endpoint hit : createNewCompany")
 	// get the payload from request
-	err := json.NewDecoder(r.Body).Decode(&article)
+	err := json.NewDecoder(r.Body).Decode(&Company)
 	if err != nil {
 		app.logger.Println(err)
 	}
 
 	if app.DBType == "mysql" {
-		query = "INSERT INTO articles (title, descr, content) VALUES (?,?,?)"
+		query = "INSERT INTO Company_Detail (Client_ID, Company_ID, Company_Name, ASIC, Flight_Risk_Status, Recruit_Status, Total_Flight_Risk, Total_Backfill, Create_Date, Last_Update, Data_as_of_Date) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
 	} else if app.DBType == "postgres" {
-		query = "INSERT INTO articles (title, descr, content) VALUES ($1,$2,$3)"
+		query = "INSERT INTO Company_Detail (title, descr, content) VALUES ($1,$2,$3)"
 	}
 
 	// insert data into DB
-	response, err := app.Database.Exec(query, article.Title, article.Desc, article.Content)
+	response, err := app.Database.Exec(query, Company.Client_ID, Company.Company_ID, Company.Company_Name)
 	// if there is an error inserting, handle it
 	if err != nil {
 		app.logger.Println(err.Error())
@@ -73,24 +81,24 @@ func (app *App) createNewArticle(w http.ResponseWriter, r *http.Request) {
 	app.logger.Print(response.RowsAffected())
 	app.logger.Println("inserted new record to DB")
 
-	// return the added article
-	json.NewEncoder(w).Encode(article)
+	// return the added Company
+	json.NewEncoder(w).Encode(Company)
 }
 
-//	GET /returnAllArticles
+//	GET /returnAllCompany_Detail
 //	query params : id (last displayed ID for pagination), limit (max entry count in display)
-//	response     : Article struct array
+//	response     : Company struct array
 //
-// get all the articles from DB
-func (app *App) returnAllArticles(w http.ResponseWriter, r *http.Request) {
+// get all the Company_Detail from DB
+func (app *App) returnAllCompany_Detail(w http.ResponseWriter, r *http.Request) {
 
 	var (
-		query       string
-		queryParams []interface{}
-		articles    []Article
+		query          string
+		queryParams    []interface{}
+		Company_Detail []Company
 	)
 
-	app.logger.Println("Endpoint hit : returnAllArticles")
+	app.logger.Println("Endpoint hit : returnAllCompany_Detail")
 
 	// get the id and limit from param
 	lastID := r.URL.Query().Get("id")
@@ -105,17 +113,17 @@ func (app *App) returnAllArticles(w http.ResponseWriter, r *http.Request) {
 	if limit == "" {
 
 		if app.DBType == "mysql" {
-			query = "SELECT * FROM articles WHERE id > ? ORDER BY id ASC"
+			query = "SELECT * FROM Company_Detail WHERE Company_ID > ? ORDER BY Company_ID ASC"
 		} else if app.DBType == "postgres" {
-			query = "SELECT * FROM articles WHERE id > $1 ORDER BY id ASC"
+			query = "SELECT * FROM Company_Detail WHERE id > $1 ORDER BY id ASC"
 		}
 		queryParams = append(queryParams, lastID)
 	} else {
 
 		if app.DBType == "mysql" {
-			query = "SELECT * FROM articles WHERE id > ? ORDER BY id ASC LIMIT ?"
+			query = "SELECT * FROM Company_Detail WHERE Company_ID > ? ORDER BY Company_ID ASC LIMIT ?"
 		} else if app.DBType == "postgres" {
-			query = "SELECT * FROM articles WHERE id > $1 ORDER BY id ASC LIMIT $2"
+			query = "SELECT * FROM Company_Detail WHERE id > $1 ORDER BY id ASC LIMIT $2"
 		}
 		queryParams = append(queryParams, lastID, limit)
 	}
@@ -136,14 +144,14 @@ func (app *App) returnAllArticles(w http.ResponseWriter, r *http.Request) {
 	// get all records until all are read
 	for response.Next() {
 
-		var article Article
+		var Company Company
 
-		// get data from DB for article fields
+		// get data from DB for Company fields
 		err = response.Scan(
-			&article.Id,
-			&article.Title,
-			&article.Desc,
-			&article.Content,
+			&Company.Client_ID,
+			&Company.Company_ID,
+			&Company.Company_Name,
+			&Company.ASIC,
 		)
 		// if there is an error inserting, handle it
 		if err != nil {
@@ -151,40 +159,40 @@ func (app *App) returnAllArticles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// append to final list of articles
-		articles = append(articles, article)
+		// append to final list of Company_Detail
+		Company_Detail = append(Company_Detail, Company)
 	}
-	app.logger.Printf("article : %+v\n", articles)
+	app.logger.Printf("Company : %+v\n", Company_Detail)
 
 	// generate JSON resopnse
-	err = json.NewEncoder(w).Encode(articles)
+	err = json.NewEncoder(w).Encode(Company_Detail)
 	if err != nil {
 		app.logger.Println(err)
 	}
-	app.logger.Println("Endpoint hit : return all articles")
+	app.logger.Println("Endpoint hit : return all Company_Detail")
 }
 
-//	GET /returnSingleArticle/{id}
-//	url params : id (article ID to be retrieved)
-//	response   : Article struct
+//	GET /returnSingleCompany/{id}
+//	url params : id (Company ID to be retrieved)
+//	response   : Company struct
 //
-// return a selected article value from DB
-func (app *App) returnSingleArticle(w http.ResponseWriter, r *http.Request) {
+// return a selected Company value from DB
+func (app *App) returnSingleCompany(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		query   string
-		article Article
+		Company Company
 	)
 
-	app.logger.Println("Endpoint hit : returnSingleArticle")
+	app.logger.Println("Endpoint hit : returnSingleCompany")
 	// get url path parameters
 	vars := mux.Vars(r)
 	key := vars["id"]
 
 	if app.DBType == "mysql" {
-		query = "SELECT * FROM articles WHERE id=?"
+		query = "SELECT * FROM Company_Detail WHERE Company_ID=?"
 	} else if app.DBType == "postgres" {
-		query = "SELECT * FROM articles WHERE id=$1"
+		query = "SELECT * FROM Company_Detail WHERE id=$1"
 	}
 
 	// insert data into DB
@@ -199,12 +207,12 @@ func (app *App) returnSingleArticle(w http.ResponseWriter, r *http.Request) {
 	// iterate until entries from db are read
 	for response.Next() {
 
-		// scan and get article fields value
+		// scan and get Company fields value
 		err = response.Scan(
-			&article.Id,
-			&article.Title,
-			&article.Desc,
-			&article.Content,
+			&Company.Client_ID,
+			&Company.Company_ID,
+			&Company.Company_Name,
+			&Company.ASIC,
 		)
 		// if there is an error inserting, handle it
 		if err != nil {
@@ -212,46 +220,46 @@ func (app *App) returnSingleArticle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	app.logger.Printf("article : %+v\n", article)
+	app.logger.Printf("Company : %+v\n", Company)
 
-	// if article ID is not empty, return JSON response
-	if article.Id != 0 {
-		json.NewEncoder(w).Encode(article)
+	// if Company ID is not empty, return JSON response
+	if Company.Company_ID != 0 {
+		json.NewEncoder(w).Encode(Company)
 	} else {
 		http.Error(w, "no record", http.StatusNotFound)
 	}
 }
 
-//	PUT /updateArticle/{id}
-//	url params : id (article ID to be retrieved)
+//	PUT /updateCompany/{id}
+//	url params : id (Company ID to be retrieved)
 //
-// update the article for a given article ID
-func (app *App) updateArticle(w http.ResponseWriter, r *http.Request) {
+// update the Company for a given Company ID
+func (app *App) updateCompany(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		query          string
-		updatedArticle Article
+		updatedCompany Company
 	)
 
-	app.logger.Println("Endpoint hit : updateArticle")
+	app.logger.Println("Endpoint hit : updateCompany")
 	// get the path parameter
 	vars := mux.Vars(r)
-	key := vars["id"]
+	key := vars["Company_ID"]
 
-	// get the payload data for article
-	err := json.NewDecoder(r.Body).Decode(&updatedArticle)
+	// get the payload data for Company
+	err := json.NewDecoder(r.Body).Decode(&updatedCompany)
 	if err != nil {
 		app.logger.Println(err)
 	}
 
 	if app.DBType == "mysql" {
-		query = "UPDATE articles SET title=?, descr=?, content=? WHERE id=?"
+		query = "UPDATE Company_Detail SET Client_ID=? , Company_ID=?, Company_Name=?, ASIC=?, Flight_Risk_Status=?, Recruit_Status=?, Total_Flight_Risk=?, Total_Backfill=?, Create_Date=?, Last_Update=?, Data_as_of_Date=? WHERE id=?"
 	} else if app.DBType == "postgres" {
-		query = "UPDATE articles SET title=$1, descr=$2, content=$3 WHERE id=$4"
+		query = "UPDATE Company_Detail SET title=$1, descr=$2, content=$3 WHERE id=$4"
 	}
 
 	// update data in DB
-	response, err := app.Database.Exec(query, updatedArticle.Title, updatedArticle.Desc, updatedArticle.Content, key)
+	response, err := app.Database.Exec(query, updatedCompany.Client_ID, updatedCompany.Company_ID, updatedCompany.Company_Name, key)
 	// if there is an error inserting, handle it
 	if err != nil {
 		app.logger.Println(err.Error())
@@ -260,27 +268,27 @@ func (app *App) updateArticle(w http.ResponseWriter, r *http.Request) {
 	app.logger.Print(response.RowsAffected())
 	app.logger.Println(" DB update performed.")
 
-	// return the JSON response for added article
-	json.NewEncoder(w).Encode(updatedArticle)
+	// return the JSON response for added Company
+	json.NewEncoder(w).Encode(updatedCompany)
 }
 
-//	DELETE /deleteArticle/{id}
-//	url params : id (article ID to be retrieved)
+//	DELETE /deleteCompany/{id}
+//	url params : id (Company ID to be retrieved)
 //
-// remove an article from DB
-func (app *App) deleteArticle(w http.ResponseWriter, r *http.Request) {
+// remove an Company from DB
+func (app *App) deleteCompany(w http.ResponseWriter, r *http.Request) {
 
 	var query string
 
-	app.logger.Println("Endpoint hit : deleteArticle")
+	app.logger.Println("Endpoint hit : deleteCompany")
 	// get url path parameter
 	vars := mux.Vars(r)
-	key := vars["id"]
+	key := vars["Company_ID"]
 
 	if app.DBType == "mysql" {
-		query = "DELETE FROM articles WHERE id=?"
+		query = "DELETE FROM Company_Detail WHERE Company_ID=?"
 	} else if app.DBType == "postgres" {
-		query = "DELETE FROM articles WHERE id=$1"
+		query = "DELETE FROM Company_Detail WHERE id=$1"
 	}
 
 	// insert data into DB
@@ -301,37 +309,53 @@ func (app *App) homepage(w http.ResponseWriter, r *http.Request) {
 
 	app.logger.Println("Endpoint hit : homepage")
 	fmt.Fprint(w, `
-- POST /article
-  - Add new article to DB
+- POST /Company
+  - Add new Company to DB
   - payload :
     {
-        Title     (string)
-        desc      (string)
-        content   (string)
+		Client_ID 	(string)
+		Company_ID 	(string)
+		Company_Name (string)
+		ASIC 		(string)
+		Flight_Risk_Status (string)
+		Recruit_Status (string)
+		Total_Flight_Risk (string)
+		Total_Backfill   (string)
+		Create_Date (string)
+		Last_Update   (string)
+		Data_As_Of_Date  (string)
     }
 
-- PUT /article/{id}
-  - Update an existing article DB
-  - query param : id (article id from GET API)
+- PUT /Company/{id}
+  - Update an existing Company DB
+  - query param : id (Company id from GET API)
   - payload :
-    {
-        Title     (string)
-        desc      (string)
-        content   (string)
-    }
+  {
+	  Client_ID 	(string)
+	  Company_ID 	(string)
+	  Company_Name (string)
+	  ASIC 		(string)
+	  Flight_Risk_Status (string)
+	  Recruit_Status (string)
+	  Total_Flight_Risk (string)
+	  Total_Backfill   (string)
+	  Create_Date (string)
+	  Last_Update   (string)
+	  Data_As_Of_Date  (string)
+  }
 
-- DELETE /article/{id}
+- DELETE /Company/{id}
   - Deletes an entry from DB
-  - query param : id (article id from GET API)
+  - query param : id (Company id from GET API)
 
-- GET /article/{id}
-  - Retrieves article data from DB for a given ID
-  - query param : id (article id from GET API) 
+- GET /Company/{id}
+  - Retrieves Company data from DB for a given ID
+  - query param : id (Company id from GET API) 
 
-- GET /articles
-  - retrives all articles from DB
+- GET /Company_Detail
+  - retrives all Company_Detail from DB
   - query params : id (last ID from previous GET call for pagination), limit (max entry per page)
-  - response : list of articles
+  - response : list of Company_Detail
 `)
 }
 
@@ -343,11 +367,11 @@ func handleRequests(app *App, port string) {
 
 	// http routes
 	app.Router.HandleFunc("/", app.homepage)
-	app.Router.HandleFunc("/articles", app.returnAllArticles).Methods("GET")
-	app.Router.HandleFunc("/article", app.createNewArticle).Methods("POST")
-	app.Router.HandleFunc("/article/{id}", app.updateArticle).Methods("PUT")
-	app.Router.HandleFunc("/article/{id}", app.deleteArticle).Methods("DELETE")
-	app.Router.HandleFunc("/article/{id}", app.returnSingleArticle).Methods("GET")
+	app.Router.HandleFunc("/Company_Detail", app.returnAllCompany_Detail).Methods("GET")
+	app.Router.HandleFunc("/Company_Detail", app.createNewCompany).Methods("POST")
+	app.Router.HandleFunc("/Company_Detail/{Company_ID}", app.updateCompany).Methods("PUT")
+	app.Router.HandleFunc("/Company_Detail/{Company_ID}", app.deleteCompany).Methods("DELETE")
+	app.Router.HandleFunc("/Company_Detail/{Company_ID}", app.returnSingleCompany).Methods("GET")
 
 	// start the server on port
 	app.logger.Fatal(http.ListenAndServe(":"+port, app.Router))
@@ -382,27 +406,28 @@ func main() {
 
 	var connectionString string
 
-	dbType := flag.String("dbtype", "mysql", "choose the database type : mysql / postgres")
-	dbUser := flag.String("user", "root", "db user name")
-	dbPass := flag.String("pass", "my-secret-pw", "db password")
-	dbHost := flag.String("host", "localhost", "host address for DB")
-	dbPort := flag.String("dbport", "3306", "port of the running DB")
-	dbName := flag.String("db", "db", "database name for connection")
-	port := flag.String("port", "7777", "port for running this service")
-	flag.Parse()
+	//dbType := flag.String("mysql")
+	//dbUser := flag.String("admin")
+	//dbPass := flag.String("44_FUNtime")
+	//dbHost := flag.String("happy1.cwkfm0ctmqb3.us-east-2.rds.amazonaws.com")
+	//dbPort := flag.String("3306")
+	//	dbName := flag.String("Happy1")
+	//	port := flag.String("7777")
+	//	flag.Parse()
 
 	// based on the db type set the connection string
-	if *dbType == "mysql" {
+	const dbType = "mysql"
 
-		connectionString = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", *dbUser, *dbPass, *dbHost, *dbPort, *dbName)
+	//	connectionString = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", *dbUser, *dbPass, *dbHost, *dbPort, *dbName)
+	connectionString = "admin:44_FUNtime@tcp(happy1.cwkfm0ctmqb3.us-east-2.rds.amazonaws.com:3306)/Happy1"
 
-	} else if *dbType == "postgres" {
+	//} else if *dbType == "postgres" {
 
-		connectionString = fmt.Sprintf(
-			"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-			*dbHost, *dbPort, *dbUser, *dbPass, *dbName,
-		)
-	}
+	//	connectionString = fmt.Sprintf(
+	//		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	//		*dbHost, *dbPort, *dbUser, *dbPass, *dbName,
+	//	)
+	//}
 
 	// store the log file data to log file
 	logFile, _ := os.OpenFile(
@@ -418,14 +443,14 @@ func main() {
 	)
 
 	// connect to DB
-	dbConn, err := connectToDB(*dbType, connectionString, logger)
+	dbConn, err := connectToDB("mysql", connectionString, logger)
 	if err != nil {
 		log.Println(err)
 	}
 
 	// set new router
 	app := &App{
-		DBType:   *dbType,
+		DBType:   "mysql",
 		Router:   mux.NewRouter().StrictSlash(true),
 		Database: dbConn,
 		logger:   logger,
@@ -436,5 +461,5 @@ func main() {
 	defer app.Database.Close()
 
 	// initialize the routes for rest API server
-	handleRequests(app, *port)
+	handleRequests(app, "7777")
 }
